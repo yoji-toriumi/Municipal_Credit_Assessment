@@ -23,6 +23,9 @@ from utils.calculations import (
     format_currency,
     get_trend_indicator,
 )
+from utils.cfp_scraper import CFPScraper, list_states, list_cities
+from utils.data_mapper import get_field_summary
+from utils.excel_updater import update_excel_with_cfp_data
 
 # Page configuration
 st.set_page_config(
@@ -80,7 +83,7 @@ def render_sidebar():
     page = st.sidebar.radio(
         "Select Page",
         ["📊 Dashboard", "💰 Financial Analysis", "⚙️ Operating Performance",
-         "📈 Year Comparison", "📝 Data Input", "ℹ️ About"]
+         "📈 Year Comparison", "📝 Data Input", "🌐 Fetch CFP Data", "ℹ️ About"]
     )
 
     st.sidebar.markdown("---")
@@ -547,6 +550,183 @@ def render_data_input(data, year):
             st.info("Export functionality would run here. (Demo mode)")
 
 
+def render_cfp_scraper(data, year):
+    """Render the CFP data scraper page."""
+    st.title("🌐 Fetch CFP Data from City Finance Portal")
+
+    st.info("""
+    This tool fetches municipal financial data from [cityfinance.in](https://www.cityfinance.in)
+    and updates the CFP fields in the assessment.
+    """)
+
+    # Initialize session state
+    if 'cfp_states' not in st.session_state:
+        st.session_state.cfp_states = None
+    if 'cfp_cities' not in st.session_state:
+        st.session_state.cfp_cities = None
+    if 'cfp_scraped_data' not in st.session_state:
+        st.session_state.cfp_scraped_data = None
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("1. Select State")
+
+        # Load states button
+        if st.button("🔄 Load States", key="load_states"):
+            with st.spinner("Fetching states..."):
+                st.session_state.cfp_states = list_states()
+
+        # State dropdown
+        if st.session_state.cfp_states:
+            state_options = {s['name']: s for s in st.session_state.cfp_states}
+            selected_state_name = st.selectbox(
+                "Select State",
+                options=list(state_options.keys()),
+                key="state_select"
+            )
+            selected_state = state_options.get(selected_state_name)
+
+            if selected_state:
+                st.caption(f"Code: {selected_state['code']} | ULBs: {selected_state.get('total_ulbs', 'N/A')}")
+
+    with col2:
+        st.subheader("2. Select City")
+
+        # Load cities button
+        if st.session_state.cfp_states and st.button("🔄 Load Cities", key="load_cities"):
+            selected_state = state_options.get(selected_state_name)
+            if selected_state:
+                with st.spinner(f"Fetching cities for {selected_state['name']}..."):
+                    st.session_state.cfp_cities = list_cities(selected_state['code'])
+
+        # City dropdown
+        if st.session_state.cfp_cities:
+            city_options = {c['name']: c for c in st.session_state.cfp_cities}
+            selected_city_name = st.selectbox(
+                "Select City/ULB",
+                options=list(city_options.keys()),
+                key="city_select"
+            )
+            selected_city = city_options.get(selected_city_name)
+
+            if selected_city:
+                st.caption(f"Type: {selected_city.get('ulb_type', 'Unknown')}")
+
+    st.markdown("---")
+
+    # Fetch data section
+    st.subheader("3. Fetch Financial Data")
+
+    if st.session_state.cfp_states and st.session_state.cfp_cities:
+        selected_state = state_options.get(selected_state_name)
+        selected_city = city_options.get(selected_city_name)
+
+        if st.button("📥 Fetch CFP Data", type="primary", key="fetch_data"):
+            with st.spinner("Fetching financial data from City Finance Portal..."):
+                scraper = CFPScraper()
+                state_slug = selected_state.get('slug', selected_state['name'].lower().replace(' ', '-'))
+                city_slug = selected_city.get('slug', selected_city['name'].lower().replace(' ', '-'))
+
+                scraped_data = scraper.get_financial_data(state_slug, city_slug)
+                st.session_state.cfp_scraped_data = scraped_data
+
+        # Display scraped data
+        if st.session_state.cfp_scraped_data:
+            scraped = st.session_state.cfp_scraped_data
+
+            st.success("Data fetched successfully!")
+
+            # Summary
+            summary = get_field_summary(scraped)
+
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Fields Found", f"{summary['matched_count']}/{summary['total_fields']}")
+            with col2:
+                st.metric("Completion", f"{summary['completion_percentage']:.1f}%")
+            with col3:
+                st.metric("Year", scraped.get('year', 'N/A'))
+
+            # Show data preview
+            st.subheader("Data Preview")
+
+            tabs = st.tabs(["Revenue Income", "Revenue Expenditure", "Liabilities", "Assets"])
+
+            with tabs[0]:
+                ri = scraped.get('revenue_income', {})
+                if any(v is not None for v in ri.values()):
+                    for key, value in ri.items():
+                        if value is not None:
+                            st.write(f"**{key.replace('_', ' ').title()}**: ₹{value:,.2f} Lakhs")
+                else:
+                    st.warning("No revenue income data available")
+
+            with tabs[1]:
+                re = scraped.get('revenue_expenditure', {})
+                if any(v is not None for v in re.values()):
+                    for key, value in re.items():
+                        if value is not None:
+                            st.write(f"**{key.replace('_', ' ').title()}**: ₹{value:,.2f} Lakhs")
+                else:
+                    st.warning("No revenue expenditure data available")
+
+            with tabs[2]:
+                liab = scraped.get('liabilities', {})
+                if any(v is not None for v in liab.values()):
+                    for key, value in liab.items():
+                        if value is not None:
+                            st.write(f"**{key.replace('_', ' ').title()}**: ₹{value:,.2f} Lakhs")
+                else:
+                    st.warning("No liabilities data available")
+
+            with tabs[3]:
+                assets = scraped.get('assets', {})
+                if any(v is not None for v in assets.values()):
+                    for key, value in assets.items():
+                        if value is not None:
+                            st.write(f"**{key.replace('_', ' ').title()}**: ₹{value:,.2f} Lakhs")
+                else:
+                    st.warning("No assets data available")
+
+            # Update Excel button
+            st.markdown("---")
+            st.subheader("4. Update Excel File")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                create_backup = st.checkbox("Create backup before updating", value=True)
+            with col2:
+                target_year = st.selectbox("Target Year in Excel", [2022, 2023, 2024, 2025], index=2)
+
+            if st.button("💾 Update Excel File", type="primary", key="update_excel"):
+                try:
+                    with st.spinner("Updating Excel file..."):
+                        scraped['year'] = target_year
+                        result = update_excel_with_cfp_data(
+                            str(DATA_FILE),
+                            scraped,
+                            create_backup=create_backup
+                        )
+
+                    st.success(f"Excel file updated successfully!")
+                    st.write(f"- Updated **{result['updated_count']}** fields")
+                    st.write(f"- Completion: **{result['completion_percentage']:.1f}%**")
+
+                    if result.get('backup_path'):
+                        st.write(f"- Backup saved to: `{result['backup_path']}`")
+
+                    # Clear cache to reload data
+                    st.cache_data.clear()
+                    st.info("Please refresh the page to see updated data in other sections.")
+
+                except Exception as e:
+                    st.error(f"Error updating Excel: {e}")
+
+    else:
+        st.warning("Please load states and cities first, then select a city to fetch data.")
+
+
 def render_about():
     """Render the about page."""
     st.title("ℹ️ About This Tool")
@@ -621,6 +801,8 @@ def main():
         render_year_comparison(data, selected_year)
     elif page == "📝 Data Input":
         render_data_input(data, selected_year)
+    elif page == "🌐 Fetch CFP Data":
+        render_cfp_scraper(data, selected_year)
     elif page == "ℹ️ About":
         render_about()
 
