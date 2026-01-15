@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Municipal Credit Assessment Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1f4e79 0%, #2980b9 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+
+        header .city-info {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            padding: 12px 24px;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .nav-tab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .nav-tab.active {
+            background: #1f4e79;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .grade-badge {
+            display: inline-block;
+            padding: 15px 30px;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .grade-badge .status {
+            font-size: 0.9rem;
+            font-weight: normal;
+            margin-top: 5px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .metric-card .icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .metric-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1f4e79;
+        }
+
+        .metric-card .label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .chart-container h3 {
+            margin-bottom: 20px;
+            color: #1f4e79;
+        }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #1f4e79;
+        }
+
+        tr:hover {
+            background: #f5f7fa;
+        }
+
+        .rating-scale {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .rating-item {
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            color: white;
+            font-weight: 500;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .year-selector {
+            padding: 10px 20px;
+            font-size: 1rem;
+            border: 2px solid #1f4e79;
+            border-radius: 8px;
+            background: white;
+            color: #1f4e79;
+            cursor: pointer;
+        }
+
+        .progress-bar {
+            background: #e0e0e0;
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .coverage-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .coverage-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .coverage-card h4 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .coverage-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #1f4e79;
+        }
+
+        .input-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .input-section h3 {
+            margin-bottom: 20px;
+            color: #1f4e79;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #1f4e79;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: #1f4e79;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #163a5c;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .about-section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .about-section h2 {
+            color: #1f4e79;
+            margin-bottom: 20px;
+        }
+
+        .about-section p {
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+
+            header h1 {
+                font-size: 1.5rem;
+            }
+
+            .metric-card .value {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Municipal Credit Assessment Dashboard</h1>
+            <div class="city-info">
+                <strong>Tiruchirappalli City Municipal Corporation</strong> | Tamil Nadu, India
+            </div>
+        </header>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('dashboard')">Dashboard</button>
+            <button class="nav-tab" onclick="showTab('financial')">Financial Analysis</button>
+            <button class="nav-tab" onclick="showTab('operating')">Operating Performance</button>
+            <button class="nav-tab" onclick="showTab('comparison')">Year Comparison</button>
+            <button class="nav-tab" onclick="showTab('input')">Data Input</button>
+            <button class="nav-tab" onclick="showTab('about')">About</button>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <div class="section-header">
+                <h2>Creditworthiness Overview</h2>
+                <select class="year-selector" id="yearSelect" onchange="updateDashboard()">
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                    <option value="2022">2022</option>
+                    <option value="2025">2025</option>
+                </select>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="icon">📊</div>
+                    <div class="value" id="totalScore">60.2</div>
+                    <div class="label">Total Score / 100</div>
+                </div>
+                <div class="metric-card">
+                    <div class="icon">💰</div>
+                    <div class="value" id="financialScore">60</div>
+                    <div class="label">Financial Score / 100</div>
+                </div>
+                <div class="metric-card">
+                    <div class="icon">⚙️</div>
+                    <div class="value" id="operatingScore">60.5</div>
+                    <div class="label">Operating Score / 100</div>
+                </div>
+                <div class="metric-card">
+                    <div class="icon">🏦</div>
+                    <div class="value">₹232 Cr</div>
+                    <div class="label">Borrowing Capacity</div>
+                </div>
+                <div class="metric-card">
+                    <div id="gradeBadge" class="grade-badge" style="background: #32CD32;">
+                        <div id="gradeText">PAS A</div>
+                        <div class="status" id="gradeStatus">Adequate Creditworthiness</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-row">
+                <div class="chart-container">
+                    <h3>Score Composition</h3>
+                    <canvas id="compositionChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Creditworthiness Gauge</h3>
+                    <canvas id="gaugeChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>Score Trend Over Years</h3>
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Financial Analysis Tab -->
+        <div id="financial" class="tab-content">
+            <h2 style="margin-bottom: 20px; color: #1f4e79;">Financial Analysis</h2>
+
+            <div class="charts-row">
+                <div class="chart-container">
+                    <h3>Income Ratios (2024)</h3>
+                    <canvas id="incomeChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Expense Ratios (2024)</h3>
+                    <canvas id="expenseChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>Financial Ratios Summary</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Indicator</th>
+                            <th>2023</th>
+                            <th>2024</th>
+                            <th>Unit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Own Tax Revenue to Total Revenue</td>
+                            <td>34.2%</td>
+                            <td>27.2%</td>
+                            <td>%</td>
+                        </tr>
+                        <tr>
+                            <td>Non-tax Revenue to Total Revenue</td>
+                            <td>35.5%</td>
+                            <td>41.0%</td>
+                            <td>%</td>
+                        </tr>
+                        <tr>
+                            <td>Own Revenue / Total Revenue</td>
+                            <td>69.6%</td>
+                            <td>66.1%</td>
+                            <td>%</td>
+                        </tr>
+                        <tr>
+                            <td>Establishment Expenses / Revenue</td>
+                            <td>46.9%</td>
+                            <td>46.3%</td>
+                            <td>%</td>
+                        </tr>
+                        <tr>
+                            <td>O&M / Total Revenue</td>
+                            <td>26.9%</td>
+                            <td>23.8%</td>
+                            <td>%</td>
+                        </tr>
+                        <tr>
+                            <td>Operating Surplus (Pre-Depreciation)</td>
+                            <td>₹53.02 L</td>
+                            <td>₹92.68 L</td>
+                            <td>Lakhs</td>
+                        </tr>
+                        <tr>
+                            <td>Interest Coverage Ratio</td>
+                            <td>3.32x</td>
+                            <td>3.73x</td>
+                            <td>-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Operating Performance Tab -->
+        <div id="operating" class="tab-content">
+            <h2 style="margin-bottom: 20px; color: #1f4e79;">Operating Performance</h2>
+
+            <div class="coverage-grid">
+                <div class="coverage-card">
+                    <h4>💧 Water Supply Coverage</h4>
+                    <div class="coverage-value">95%</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 95%; background: #28a745;"></div>
+                    </div>
+                </div>
+                <div class="coverage-card">
+                    <h4>🗑️ SWM Coverage</h4>
+                    <div class="coverage-value">92%</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 92%; background: #28a745;"></div>
+                    </div>
+                </div>
+                <div class="coverage-card">
+                    <h4>🚽 Toilet Coverage</h4>
+                    <div class="coverage-value">100%</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 100%; background: #28a745;"></div>
+                    </div>
+                </div>
+                <div class="coverage-card">
+                    <h4>🚰 Sewerage Coverage</h4>
+                    <div class="coverage-value">30%</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 30%; background: #dc3545;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-row" style="margin-top: 20px;">
+                <div class="chart-container">
+                    <h3>Service Coverage Comparison</h3>
+                    <canvas id="coverageChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Collection Efficiency</h3>
+                    <canvas id="efficiencyChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>Operating Indicators Summary</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Indicator</th>
+                            <th>2023</th>
+                            <th>2024</th>
+                            <th>Unit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Water Supply Coverage</td>
+                            <td>94%</td>
+                            <td>95%</td>
+                            <td>%</td>
+                        </tr>
+                        <tr>
+                            <td>SWM Coverage</td>
+                            <td>95.2%</td>
+                            <td>91.9%</td>
+                            <td>%</td>
+                        </tr>
+                        <tr>
+                            <td>Water Tax Collection Efficiency</td>
+                            <td>69%</td>
+                            <td>58%</td>
+                            <td>%</td>
+                        </tr>
+                        <tr>
+                            <td>Property Tax Collection Efficiency</td>
+                            <td>83.6%</td>
+                            <td>89.4%</td>
+                            <td>%</td>
+                        </tr>
+                        <tr>
+                            <td>Non-Revenue Water</td>
+                            <td>27%</td>
+                            <td>23%</td>
+                            <td>%</td>
+                        </tr>
+                        <tr>
+                            <td>Water Metering</td>
+                            <td>90%</td>
+                            <td>100%</td>
+                            <td>%</td>
+                        </tr>
+                        <tr>
+                            <td>Per Capita Water Supply</td>
+                            <td>118 lpcd</td>
+                            <td>126 lpcd</td>
+                            <td>lpcd</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Year Comparison Tab -->
+        <div id="comparison" class="tab-content">
+            <h2 style="margin-bottom: 20px; color: #1f4e79;">Year Comparison</h2>
+
+            <div class="chart-container">
+                <h3>Score Comparison Across Years</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Year</th>
+                            <th>Financial Score</th>
+                            <th>Operating Score</th>
+                            <th>Total Score</th>
+                            <th>Grade</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>2022</td>
+                            <td>0</td>
+                            <td>4</td>
+                            <td>1.2</td>
+                            <td><span style="color: #DC143C; font-weight: bold;">PAS D</span></td>
+                            <td>Not creditworthy</td>
+                        </tr>
+                        <tr>
+                            <td>2023</td>
+                            <td>64</td>
+                            <td>59.5</td>
+                            <td>62.6</td>
+                            <td><span style="color: #32CD32; font-weight: bold;">PAS A</span></td>
+                            <td>Adequate level of creditworthiness</td>
+                        </tr>
+                        <tr style="background: #e8f5e9;">
+                            <td><strong>2024</strong></td>
+                            <td><strong>60</strong></td>
+                            <td><strong>60.5</strong></td>
+                            <td><strong>60.2</strong></td>
+                            <td><span style="color: #32CD32; font-weight: bold;">PAS A</span></td>
+                            <td>Adequate level of creditworthiness</td>
+                        </tr>
+                        <tr>
+                            <td>2025</td>
+                            <td>45</td>
+                            <td>46</td>
+                            <td>45.3</td>
+                            <td><span style="color: #FFA500; font-weight: bold;">PAS BB</span></td>
+                            <td>High level of Credit Risk</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="charts-row">
+                <div class="chart-container">
+                    <h3>Financial vs Operating Scores</h3>
+                    <canvas id="comparisonBarChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Total Score Progression</h3>
+                    <canvas id="progressionChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>Year-over-Year Changes</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="label">2022 → 2023</div>
+                        <div class="value" style="color: #28a745;">+61.4</div>
+                        <div class="icon">📈</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="label">2023 → 2024</div>
+                        <div class="value" style="color: #dc3545;">-2.5</div>
+                        <div class="icon">📉</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="label">2024 → 2025</div>
+                        <div class="value" style="color: #dc3545;">-14.9</div>
+                        <div class="icon">📉</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Input Tab -->
+        <div id="input" class="tab-content">
+            <h2 style="margin-bottom: 20px; color: #1f4e79;">Data Input</h2>
+
+            <div class="input-section">
+                <h3>City Information</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>State</label>
+                        <input type="text" value="Tamil Nadu">
+                    </div>
+                    <div class="form-group">
+                        <label>City/Municipality Name</label>
+                        <input type="text" value="Tiruchirappalli City Municipal Corporation">
+                    </div>
+                    <div class="form-group">
+                        <label>Assessment Year</label>
+                        <select>
+                            <option>2024</option>
+                            <option>2023</option>
+                            <option>2025</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-section">
+                <h3>Financial Indicators (in Lakhs)</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Tax Revenue</label>
+                        <input type="number" placeholder="Enter value">
+                    </div>
+                    <div class="form-group">
+                        <label>Non-Tax Revenue</label>
+                        <input type="number" placeholder="Enter value">
+                    </div>
+                    <div class="form-group">
+                        <label>Assigned Revenue</label>
+                        <input type="number" placeholder="Enter value">
+                    </div>
+                    <div class="form-group">
+                        <label>Revenue Grants</label>
+                        <input type="number" placeholder="Enter value">
+                    </div>
+                    <div class="form-group">
+                        <label>Establishment Expenses</label>
+                        <input type="number" placeholder="Enter value">
+                    </div>
+                    <div class="form-group">
+                        <label>O&M Expenses</label>
+                        <input type="number" placeholder="Enter value">
+                    </div>
+                    <div class="form-group">
+                        <label>Property Tax Demand</label>
+                        <input type="number" placeholder="Enter value">
+                    </div>
+                    <div class="form-group">
+                        <label>Property Tax Collection</label>
+                        <input type="number" placeholder="Enter value">
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-section">
+                <h3>Service Level Indicators (%)</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Water Supply Coverage (%)</label>
+                        <input type="number" value="95" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>SWM Coverage (%)</label>
+                        <input type="number" value="92" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Toilet Coverage (%)</label>
+                        <input type="number" value="100" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Sewerage Coverage (%)</label>
+                        <input type="number" value="30" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Water Tax Collection Efficiency (%)</label>
+                        <input type="number" value="58" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Property Tax Collection Efficiency (%)</label>
+                        <input type="number" value="89" min="0" max="100">
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="alert('Data saved! (Demo mode)')">💾 Save Data</button>
+                <button class="btn btn-secondary" onclick="alert('Score calculation complete! (Demo mode)')">🔄 Calculate Scores</button>
+                <button class="btn btn-secondary" onclick="alert('Export to Excel! (Demo mode)')">📥 Export to Excel</button>
+            </div>
+        </div>
+
+        <!-- About Tab -->
+        <div id="about" class="tab-content">
+            <div class="about-section">
+                <h2>About PAS Creditworthiness Assessment Framework</h2>
+                <p>This application is a digital implementation of the <strong>Performance Assessment System (PAS) Creditworthiness Assessment Framework</strong>, designed to help Urban Local Bodies (ULBs) in India understand and improve their creditworthiness.</p>
+
+                <p>The PAS Creditworthiness assessment is a useful and almost no-cost approach for a city to understand its own creditworthiness and to identify areas where it needs to take improvement actions before considering any borrowing and a formal credit rating.</p>
+
+                <h3 style="margin-top: 25px; color: #1f4e79;">Scoring Methodology</h3>
+                <p>The creditworthiness score is calculated using:</p>
+                <ul style="margin-left: 20px; margin-bottom: 15px;">
+                    <li><strong>70%</strong> Financial Performance Score</li>
+                    <li><strong>30%</strong> Operating/Service Level Score</li>
+                </ul>
+
+                <h3 style="margin-top: 25px; color: #1f4e79;">Rating Scale</h3>
+                <div class="rating-scale">
+                    <div class="rating-item" style="background: #006400;">PAS AAA<br><small>90-100</small></div>
+                    <div class="rating-item" style="background: #228B22;">PAS AA<br><small>80-90</small></div>
+                    <div class="rating-item" style="background: #32CD32;">PAS A<br><small>60-80</small></div>
+                    <div class="rating-item" style="background: #FFD700; color: #333;">PAS BBB<br><small>50-60</small></div>
+                    <div class="rating-item" style="background: #FFA500;">PAS BB<br><small>40-50</small></div>
+                    <div class="rating-item" style="background: #FF6347;">PAS B<br><small>30-40</small></div>
+                    <div class="rating-item" style="background: #FF4500;">PAS C<br><small>20-30</small></div>
+                    <div class="rating-item" style="background: #DC143C;">PAS D<br><small>0-20</small></div>
+                </div>
+
+                <h3 style="margin-top: 25px; color: #1f4e79;">Disclaimer</h3>
+                <p style="font-size: 0.9rem; color: #666;">The assessment grade contained herein should be treated as opinion and not statements of fact or recommendations to investors to purchase, sell or hold any securities issued by ULBs. No warranty, express or implied, as to the accuracy, timeliness, completeness, merchantability, or fitness for any particular purpose is given.</p>
+
+                <p style="margin-top: 20px;"><strong>Data Source:</strong> CWAS - Creditworthiness DIY Tool for Tiruchirappalli City Municipal Corporation</p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Municipal Credit Assessment Dashboard | Built with Chart.js</p>
+            <p>Data: Tiruchirappalli City Municipal Corporation, Tamil Nadu</p>
+        </footer>
+    </div>
+
+    <script>
+        // Data
+        const data = {
+            years: [2022, 2023, 2024, 2025],
+            financial: [0, 64, 60, 45],
+            operating: [4, 59.5, 60.5, 46],
+            total: [1.2, 62.6, 60.2, 45.3],
+            grades: ['PAS D', 'PAS A', 'PAS A', 'PAS BB'],
+            status: ['Not creditworthy', 'Adequate level of creditworthiness', 'Adequate level of creditworthiness', 'High level of Credit Risk'],
+            colors: ['#DC143C', '#32CD32', '#32CD32', '#FFA500']
+        };
+
+        // Tab switching
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Update dashboard based on year selection
+        function updateDashboard() {
+            const year = parseInt(document.getElementById('yearSelect').value);
+            const idx = data.years.indexOf(year);
+
+            document.getElementById('totalScore').textContent = data.total[idx].toFixed(1);
+            document.getElementById('financialScore').textContent = data.financial[idx];
+            document.getElementById('operatingScore').textContent = data.operating[idx];
+            document.getElementById('gradeText').textContent = data.grades[idx];
+            document.getElementById('gradeStatus').textContent = data.status[idx];
+            document.getElementById('gradeBadge').style.background = data.colors[idx];
+        }
+
+        // Initialize Charts
+        function initCharts() {
+            // Score Composition Chart
+            new Chart(document.getElementById('compositionChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Score Composition'],
+                    datasets: [
+                        {
+                            label: 'Financial (70%)',
+                            data: [60 * 0.7],
+                            backgroundColor: '#1f77b4'
+                        },
+                        {
+                            label: 'Operating (30%)',
+                            data: [60.5 * 0.3],
+                            backgroundColor: '#ff7f0e'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, max: 100 }
+                    }
+                }
+            });
+
+            // Gauge Chart (using doughnut)
+            new Chart(document.getElementById('gaugeChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Score', 'Remaining'],
+                    datasets: [{
+                        data: [60.2, 39.8],
+                        backgroundColor: ['#32CD32', '#e0e0e0'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    circumference: 180,
+                    rotation: -90,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            // Trend Chart
+            new Chart(document.getElementById('trendChart'), {
+                type: 'line',
+                data: {
+                    labels: data.years,
+                    datasets: [
+                        {
+                            label: 'Total Score',
+                            data: data.total,
+                            borderColor: '#1f4e79',
+                            backgroundColor: 'rgba(31, 78, 121, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Financial',
+                            data: data.financial,
+                            borderColor: '#1f77b4',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Operating',
+                            data: data.operating,
+                            borderColor: '#ff7f0e',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { min: 0, max: 100 }
+                    }
+                }
+            });
+
+            // Income Chart
+            new Chart(document.getElementById('incomeChart'), {
+                type: 'pie',
+                data: {
+                    labels: ['Own Tax Revenue', 'Non-Tax Revenue', 'Assigned Revenue', 'Revenue Grants'],
+                    datasets: [{
+                        data: [27.2, 41.0, 4.5, 27.3],
+                        backgroundColor: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
+                    }]
+                },
+                options: {
+                    responsive: true
+                }
+            });
+
+            // Expense Chart
+            new Chart(document.getElementById('expenseChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Establishment', 'O&M', 'Fixed Charges', 'Other'],
+                    datasets: [{
+                        label: '% of Revenue',
+                        data: [46.3, 23.8, 54.3, 15],
+                        backgroundColor: ['#e74c3c', '#3498db', '#9b59b6', '#95a5a6']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { max: 100 }
+                    }
+                }
+            });
+
+            // Coverage Chart
+            new Chart(document.getElementById('coverageChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Water Supply', 'SWM', 'Toilet', 'Sewerage'],
+                    datasets: [{
+                        label: 'Coverage %',
+                        data: [95, 92, 100, 30],
+                        backgroundColor: ['#28a745', '#28a745', '#28a745', '#dc3545']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { max: 100 }
+                    }
+                }
+            });
+
+            // Efficiency Chart
+            new Chart(document.getElementById('efficiencyChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Water Tax', 'Property Tax', 'Arrear Collection'],
+                    datasets: [
+                        {
+                            label: '2023',
+                            data: [69, 83.6, 35.6],
+                            backgroundColor: '#1f77b4'
+                        },
+                        {
+                            label: '2024',
+                            data: [58, 89.4, 34.1],
+                            backgroundColor: '#ff7f0e'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { max: 100 }
+                    }
+                }
+            });
+
+            // Comparison Bar Chart
+            new Chart(document.getElementById('comparisonBarChart'), {
+                type: 'bar',
+                data: {
+                    labels: data.years,
+                    datasets: [
+                        {
+                            label: 'Financial Score',
+                            data: data.financial,
+                            backgroundColor: '#1f77b4'
+                        },
+                        {
+                            label: 'Operating Score',
+                            data: data.operating,
+                            backgroundColor: '#ff7f0e'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { max: 100 }
+                    }
+                }
+            });
+
+            // Progression Chart
+            new Chart(document.getElementById('progressionChart'), {
+                type: 'line',
+                data: {
+                    labels: data.years,
+                    datasets: [{
+                        label: 'Total Score',
+                        data: data.total,
+                        borderColor: '#1f4e79',
+                        backgroundColor: 'rgba(31, 78, 121, 0.2)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 8,
+                        pointBackgroundColor: data.colors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { min: 0, max: 100 }
+                    }
+                }
+            });
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', initCharts);
+    </script>
+</body>
+</html>
